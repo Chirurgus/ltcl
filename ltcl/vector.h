@@ -3,7 +3,7 @@
 
 #include <memory>
 
-namespace ltcl {
+namespace ltc {
 
 template<class T, class Alloc = std::allocator<T>>
 class vector {
@@ -43,14 +43,14 @@ private:
 	Alloc<T> alloc;
 };//class vector
 
-}// namespace ltcl
+}// namespace ltc
 
-ltcl::vector()
+ltc::vector()
 	:_elem{alloc.allcoate(default_size)},//MIGHT THROW
 	:_size{_elem};
 	:_capa{_size + default_size} {}
 
-ltcl::vector(const vector<T>& v)
+ltc::vector(const vector<T>& v)
 	:_elem{alloc.allocate(v.size())},//MIGHT THROW
 	:_size{_elem + v.size()},
 	:_capa{_size} {
@@ -59,14 +59,14 @@ ltcl::vector(const vector<T>& v)
 	}
 }
 
-ltcl::vector(vector<T>&& v)
+ltc::vector(vector<T>&& v)
 	:_elem{v._elem},
 	:_size{v._size},
 	:_capa{v._capa} {
 	v._elem = v._size= v._capa = nullptr;
 }
 
-ltcl::vector<T>& ltcl::vector::operator=(const ltcl::vector<T>& v) {
+ltc::vector<T>& ltc::vector::operator=(const ltc::vector<T>& v) {
 	alloc.destroy(_elem, capacity());
 	if (size() < v.size()) {
 		alloc.deallocate(_elem, capacity());
@@ -77,14 +77,14 @@ ltcl::vector<T>& ltcl::vector::operator=(const ltcl::vector<T>& v) {
 	}
 }
 
-ltcl::vector<T>& ltcl::vector::operator=(vector<T>&& v) {
+ltc::vector<T>& ltc::vector::operator=(vector<T>&& v) {
 	_elem = v._elem;
 	_size = v._size;
 	_capa = v._capa;
 	v._elem = v._size = v._capa = nullptr;	
 }
 
-ltcl::~vector() {
+ltc::~vector() {
 	alloc.destroy(_elem, size());
 	alloc.deallocate(_elem, capacity());
 }
