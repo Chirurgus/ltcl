@@ -30,6 +30,7 @@ public:
 	Vector(Vector<value_type,Alloc>&& v);
 	
 	//need a way to check if T is default initializable
+	explicit 
 	Vector(const size_type sz, const value_type& init = value_type{});
 
 	Vector<value_type,Alloc>& operator=(const Vector<value_type,Alloc>& v);
@@ -37,7 +38,8 @@ public:
 
 	~Vector();
 	
-	void clear();	
+	void clear();
+	void swap(Vector<value_type, Alloc>& v);
 	void resize(const size_type i, const value_type& v = value_type{});	
 	void reserve(const size_type i);
 	void shrink_to_fit();
@@ -51,10 +53,13 @@ public:
 	
 	const_reference at(const size_type i) const;
 	reference at(const size_type i);
+
 	const_reference front() const;
 	reference front();
+
 	const_reference back() const;
 	reference back();
+
 	const_reference operator[](const size_type i) const;
 	reference operator[](const size_type i);
 	
@@ -101,7 +106,7 @@ ltc::Vector<T,A>::Vector(Vector<T,A>&& v)
 }
 
 template<class T, class A>
-ltc::Vector<T,A>::Vector(const size_type sz, const T& init)
+ltc::Vector<T,A>::Vector(const size_type sz, const value_type& init)
 	:_first {alloc.allocate(sz)} {
 	_last = _first + sz;
 	_end = _last;
@@ -146,6 +151,21 @@ void ltc::Vector<T,A>::clear() {
 }
 
 template<class T, class A>
+void ltc::Vector<T,A>::swap(Vector<T, A>& v) {
+	pointer tmp {_first};
+	_first = v._first;
+	v._first = tmp;
+
+	tmp = _last;
+	_last = v._last;
+	v._last = tmp;
+
+	tmp = _end;
+	_end = v._end;
+	v._end = tmp;
+}
+
+template<class T, class A>
 void ltc::Vector<T,A>::resize(const size_type i,
 				 const value_type& v) {
 	if (i <= capacity()) {
@@ -179,13 +199,13 @@ void ltc::Vector<T,A>::shrink_to_fit() {
 	if (size() == capacity()) return;
 	const size_type sz {size()};
 	pointer tmp {alloc.allocate(sz)};
-	for (pointer t_it {tmp}, it {begin()}; it != end(); ++it, ++tmp ) {
+	for (pointer t_it {tmp}, it {_first}; it != _last; ++it, ++t_it ) {
 		alloc.construct(t_it, *it);
 	}
-	for (pointer it {begin()}; it != end(); ++it) {
+	for (pointer it {_first}; it != _last; ++it) {
 		alloc.destroy(it);
 	}
-	alloc.deallocate(_first, sz);
+	alloc.deallocate(_first, capacity());
 	_first = tmp;
 	_last = _end = _first + sz;
 }
@@ -217,16 +237,16 @@ template<class T, class A>
 void ltc::Vector<T,A>::grow(const size_type sz) {
 	if (sz <= size()) return;
 	const size_type old_sz {size()};
-	const pointer tmp {alloc.allocate(sz)};
-	for (const_iterator it {cbegin()}, t_it {tmp};
-		it != cend();
+	pointer tmp {alloc.allocate(sz)};
+	for (pointer it {_first}, t_it {tmp};
+		it != _last;
 		++it, ++t_it) {
 		alloc.construct(t_it, *it);
 	}
-	for (iterator it {begin()}; it != end(); ++it) {
+	for (pointer it {_first}; it != _last; ++it) {
 		alloc.destroy(it);
 	}
-	alloc.deallocate(begin(), capacity());
+	alloc.deallocate(_first, capacity());
 	_first = tmp;
 	_last = _first + old_sz;
 	_end = _first + sz;
