@@ -1,25 +1,32 @@
-#include "../ltcl/vector.h"
-#include "../ltcl/exceptions.h"
 
 #include <iostream>
+#include "../ltcl/allocators.h"
 
+class obj {
+public:
+	obj(const obj& o):_i{o._i} {}
+	obj(int i):_i{i} {}
+	int& get() { return _i; }
+	~obj() { _i = 0; std::cout << "Destroying obj\n"; }
+private:
+	 int _i;
+};
+template<class T>
+class ptr {
+public:
+	ptr(T* p): _p(p) {}
+	~ptr() { delete _p; }
+	T& operator*() { return *_p; }
+private:
+	T* _p {nullptr};	
+};
 int main() {
-	ltc::Vector<int> v(10, 11);
-	try {
-		std::cout << "size = " << v.size() << '\n';
-		std::cout << "capacity = " << v.capacity() << '\n';
-		ltc::Vector<int> u(0, 0);
-		std::cout << "size = " << u.size() << '\n';
-		std::cout << "capacity = " << u.capacity() << '\n';
-		v.swap(u);
-		std::cout << "size = " << v.size() << '\n';
-		std::cout << "capacity = " << v.capacity() << '\n';
-		std::cout << "size = " << u.size() << '\n';
-		std::cout << "capacity = " << u.capacity() << '\n';
-	}
-	catch (ltc::exception& err) {
-		std::cout << err.what() << std::endl;
-		throw;
-	}
-	return 0;
+	ltc::Allocator<ptr<obj>> a;
+	ptr<obj>* p {a.allocate(1)};
+	//std::cout << (*p).get() << '\n';
+	a.construct(p, new obj{123});
+	std::cout << (*(*p)).get() << '\n';
+	a.destroy(p);
+	std::cout << (*(*p)).get() << '\n';
+	a.deallocate(p,1);
 }

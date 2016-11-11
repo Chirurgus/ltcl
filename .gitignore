@@ -27,8 +27,8 @@
 *.out
 *.app
 
-#My addition
+#My additions
 #All the Visual Stuio stuff
 vs/*
 .gitattributes
-Makefile
+makefile
