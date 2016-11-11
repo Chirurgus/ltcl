@@ -5,6 +5,14 @@
 
 namespace ltc {
 
+/*
+ * A rudementary allocator.
+ * 
+ * Has one major flaw, when construct is called it uses copy construction
+ * this can be very troublesome, consider what happens when T is some sort
+ * of smart pointer that deletes it's pointer upon going out of scope.
+ * Update: Actually std::allocator has the same behavior.
+ */
 template<class T>
 class Allocator {
 public:
@@ -27,7 +35,6 @@ public:
 
 }// namespace ltc
 
-
 template<class T>
 typename ltc::Allocator<T>::pointer
 	ltc::Allocator<T>::allocate(const size_type sz) {
@@ -43,7 +50,7 @@ void ltc::Allocator<T>::deallocate(const pointer p, const size_type) {
 	
 template<class T>
 void ltc::Allocator<T>::construct(const pointer p, const value_type& v) {
-	::new((void*)p) value_type{v};//std::forward would be useful here
+	::new((void*)p) value_type{v};
 }
 template<class T>
 void ltc::Allocator<T>::destroy(const pointer p) {

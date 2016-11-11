@@ -1,13 +1,12 @@
 #ifndef GUARD_LTCL_VECTOR_H
 #define GUARD_LTCL_VECTOR_H
 
-#include <memory>
-
 #include "exceptions.h"
+#include "allocators.h"
 
 namespace ltc {
 
-template<class T, class Alloc = std::allocator<T>>
+template<class T, class Alloc = ltc::Allocator<T>>
 class Vector {
 public:
 	using size_type = unsigned long long;//might waht to change this later
