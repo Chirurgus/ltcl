@@ -3,13 +3,47 @@
 
 #include "exceptions.h"
 #include "allocators.h"
+#include "iterators.h"
 
 namespace ltc {
+
+namespace detail {
+	
+template<class T>
+class Vector_reverse_iterator {
+public:
+	using value_type = T;
+	using pointer = value_type*;
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	
+	Vector_reverse_iterator() {}	
+	Vector_reverse_iterator(const pointer p): _p{p} {}
+	
+	Vector_reverse_iterator<T> operator++() { --_p; }
+	Vector_reverse_iterator<T> operator++(int) { --_p; }
+	
+	Vector_reverse_iterator<T> operator--() { ++_p; }
+	Vector_reverse_iterator<T> operator--(int) { ++_p; }
+	
+	bool operator==(const Vector_reverse_iterator<T>& it) const 
+		{ return _p == it._p; }
+	bool operator!=(const Vector_reverse_iterator<T>&  it) const 
+		{ return !(*this == it); }
+	
+	reference operator*() { return *_p; }
+	const_reference operator*() const { return *_p; }
+	
+private:
+	pointer _p {nullptr};	
+};// class Vector_iterator
+
+}// namespace detail
 
 template<class T, class Alloc = ltc::Allocator<T>>
 class Vector {
 public:
-	using size_type = unsigned long long;//might waht to change this later
+	using size_type = unsigned long long;//might want to change this later
 	using value_type = T;
 
 	using reference = value_type&;
@@ -20,6 +54,10 @@ public:
 
 	using iterator = pointer;
 	using const_iterator = const_pointer;
+	
+	using reverse_iterator = detail::Vector_reverse_iterator<value_type>;
+	using const_reverse_iterator 
+		= detail::Vector_reverse_iterator<const value_type>;
 
 	static constexpr size_type default_size {8};
 	static constexpr size_type growth_coef {2};
@@ -67,6 +105,12 @@ public:
 	
 	iterator end();
 	const_iterator cend() const;
+	
+	reverse_iterator rbegin();
+	const_reverse_iterator crbegin() const;
+	
+	reverse_iterator rend();
+	const_reverse_iterator crend() const;
 	
 private:
 	void grow(const size_type sz);
@@ -336,5 +380,26 @@ template<class T, class A>
 typename ltc::Vector<T,A>::const_iterator  ltc::Vector<T,A>::cend() const {
 	return _last;
 }
+
+template<class T, class A>		
+typename ltc::Vector<T,A>::reverse_iterator ltc::Vector<T,A>::rbegin() {
+	return _last - 1;
+}
+
+template<class T, class A>		
+typename ltc::Vector<T,A>::const_reverse_iterator
+	ltc::Vector<T,A>::crbegin() const {
+	return _last - 1;
+}
 	
+template<class T, class A>		
+typename ltc::Vector<T,A>::reverse_iterator ltc::Vector<T,A>::rend() {
+	return _first - 1;
+}
+template<class T, class A>		
+typename ltc::Vector<T,A>::const_reverse_iterator
+	ltc::Vector<T,A>::crend() const {
+	return _first - 1;
+}
+
 #endif

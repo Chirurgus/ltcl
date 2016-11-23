@@ -8,11 +8,11 @@ namespace ltc {
 /*
  * A rudementary allocator.
  * 
- * Has one major flaw, when construct is called it uses copy construction
- * this can be very troublesome, consider what happens when T is some sort
- * of smart pointer that deletes it's pointer upon going out of scope.
- * Update: Actually std::allocator has the same behavior.
- */
+ * I would have liked it to be able to move the new objects into it's
+ * newlly allocated place in memory, but not sure how implement it, for now...
+ * 
+ * */
+
 template<class T>
 class Allocator {
 public:
@@ -22,6 +22,8 @@ public:
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using size_type = unsigned long long;
+	
+	template<class U> struct rebind { using other = Allocator<U>; };
 	
 	Allocator() = default;
 	Allocator(const Allocator<T>& a) = default;

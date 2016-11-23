@@ -1,16 +1,16 @@
 #include <iostream>
-#include <vector>
 
-#include "../ltcl/allocators.h"
-#include "../ltcl/vector.h"
+#include "../ltcl/list.h"
 
+#define WRITE(x) std::cout << x << '\n'
 int main() {
-	ltc::Vector<int> v;
-	for(unsigned i {0}; i < 10000; ++i) {
-		v.push_back(i);
-	}
-	for (const auto& i : v) {
-		std::cout << i << ' ';
-	}
-	std::cout << std::endl;	
+	ltc::List<int> l;
+	l.push_back(2);
+	l.push_front(1);	
+	WRITE(l.front());
+	WRITE(l.back());
+	l.pop_front();
+	l.pop_back();	
+	
+	
 }
