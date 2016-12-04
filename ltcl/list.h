@@ -6,113 +6,172 @@
 
 namespace ltc {
 
+template<class T, class Alloc = ltc::Allocator<T>>
+class List;
+
 namespace detail {
 
+class List_node_base {
+public:
+	List_node_base* insert(List_node_base* p);
+	List_node_base* insert_after(List_node_base* p);
+	List_node_base* splice_in(List_node_base* first,
+				  List_node_base* last);
+	List_node_base* splice_in_after(List_node_base* first,
+				        List_node_base* last);
+
+	List_node_base* cut_out();
+	List_node_base* cut_out(List_node_base* last);
+	
+	List_node_base* next() const { return _next; }
+	List_node_base* prev() const { return _prev; }
+private:
+	List_node_base* _next{nullptr};
+	List_node_base* _prev{nullptr};
+};
+
 template<class T>
-class List_node {
+class List_node : public List_node_base {
 public:
 	using value_type = T;
-	using pointer = value_type*;
-	using reference = value_type&;
-	using const_reference = const value_type&;
-	
-	List_node() = delete;
-	//List_node(const List_node<T>&) = delete;
-	//List_node<T>& operator=(const List_node<T>&) = delete;
-	
-	~List_node() = default;	
 
+	using reference = value_type&;
+	using const_reference = const value_type &;
+
+	List_node() = delete;
 	explicit List_node(const_reference val): _elem{val} {}
 	explicit List_node(value_type&& val): _elem{val} {}
 
-	List_node<value_type>* next() const
-		{ return _next; }
-	List_node<value_type>* next(const List_node<value_type>* p)
-		{ return _next = p; }
-	List_node<value_type>* prev() const 
-		{ return _prev; }
-	List_node<value_type>* prev(const List_node<value_type>* p)
-		{ return _prev = p; }
-	const_reference elem() const
-		{ return _elem; }
-	reference elem()
-		{ return _elem; }
-	reference elem(const_reference p) 
-		{ return _elem = p; }
-
-	List_node<value_type>* insert(List_node<value_type>* p);
-
-	List_node<value_type>* insert_after(List_node<value_type>* p);
-
-	List_node<T>* cut_out();
+	const_reference elem() const { return _elem; }
+	reference elem() { return _elem; }
+	reference elem(const_reference p) { return _elem = p; }
 
 private:
-	List_node<value_type>* _next {nullptr};
-	List_node<value_type>* _prev {nullptr};
 	value_type _elem;
 };// class List_node
 
 template<class T>
 class List_iterator {
 public:
+	template<class U, class V> friend class ltc::List;
+
 	using value_type = T;
 
-	List_iterator(): _curr{nullptr} {}
-	List_iterator(List_node<T>* p): _curr{p} {}
-	
-	List_iterator<T>& operator++();
-	List_iterator<T>& operator++(int);
-	
-	List_iterator<T>& operator--();
-	List_iterator<T>& operator--(int);
-	
-	value_type& operator*();
+	using reference = value_type&;
+	using const_reference = const value_type&;
 
-	explicit operator bool() const
-		{ return _curr != nullptr; }
+	explicit List_iterator(List_node_base * const p)
+		: _curr{static_cast<List_node<T>*>(p)} {}
+	
+	List_iterator<value_type>& operator++();
+	List_iterator<value_type>& operator++(int);
+	
+	List_iterator<value_type>& operator--();
+	List_iterator<value_type>& operator--(int);
+	
+	reference operator*();
+	const_reference operator*() const;
+
+	explicit operator bool() const {
+		return _curr != nullptr;
+	}
 		
-	bool operator==(const List_iterator<T>& it) 
-		{ return _curr == it._curr; }
-	bool operator!=(const List_iterator<T>& it) 
-		{ return !(*this == it); }
+	bool operator==(const List_iterator<value_type>& it) const {
+		return _curr == it._curr;
+	}
+	bool operator!=(const List_iterator<value_type>& it) const {
+		return !(*this == it);
+	}
 
-
-	List_node<T>* node() const { return _curr; }
 private:
+	List_node<value_type>* node() { return _curr; }
 
-	List_node<T>* _curr {};
-};// class List_forward_iteator
+	List_node<value_type>* _curr {nullptr};
+};// class List_iteator
 
 template<class T>
-class List_reverse_iterator {
+class List_reverse_iterator : public List_iterator<T> {
 public:
-	List_reverse_iterator(): _curr {nullptr} {}
+	using value_type = T;
+
+	using List_iterator<value_type>::List_iterator;
+
+	using reference = typename List_iterator<value_type>::reference;
+	using const_reference = 
+		typename List_iterator<value_type>::const_reference;
+
+
+	List_reverse_iterator<value_type>& operator++() {
+		List_iterator<value_type>::operator--();
+		return *this;
+	}
+	List_reverse_iterator<value_type>& operator++(int) {
+		List_reverse_iterator<value_type>& ret{*this};
+		List_iterator<value_type>::operator--();			
+		return ret;
+	}
 	
-private:
-	List_node<T>* _curr;
-};// class List_reverse_iterator
+	List_reverse_iterator<value_type>& operator--() {
+		List_iterator<value_type>::operator++();
+		return *this;
+	}
+	List_reverse_iterator<value_type>& operator--(int) {
+		List_reverse_iterator<value_type>& ret{*this};
+		List_iterator<value_type>::operator++();			
+		return ret;
+	}
+};//class List_reverse_iterator
+
+template<class T>
+class List_const_iterator : public List_iterator<T> {
+public: 
+	using value_type = T;
+
+	using List_iterator<value_type>::List_iterator;
+
+	using reference = typename List_iterator<value_type>::reference;
+	using const_reference = 
+		typename List_iterator<value_type>::const_reference;
+
+	const_reference operator*() const {
+		 return List_iterator<value_type>::operator*();
+	}
+};//class List_const_iterator
+
+template<class T>
+class List_const_reverse_iterator : public List_reverse_iterator<T> {
+public: 
+	using value_type = T;
+
+	using List_reverse_iterator<value_type>::List_reverse_iterator;
+
+	using reference = typename List_reverse_iterator<value_type>::reference;
+	using const_reference =
+		 typename List_reverse_iterator<value_type>::const_reference;
+
+	const_reference operator*() const {
+		 return List_reverse_iterator<value_type>::operator*();
+	}
+};//class List_const_reverse_iterator
 
 }// namespace detail
 
 //List_node members
 
-template<class T>
-detail::List_node<T>* 
-	detail::List_node<T>::insert(List_node<T>* p) 
+detail::List_node_base* detail::List_node_base::insert(List_node_base* p) 
 {
 	if (p) {
 		p->_next = this;
 		p->_prev = _prev;
 	}
 	if (_prev) {
-		_prev->_next = p; }
+		_prev->_next = p; 
+	}
 	_prev = p;	
 	return this;
 }
 
-template<class T>
-detail::List_node<T>* 
-	detail::List_node<T>::insert_after(List_node<T>* p) 
+detail::List_node_base* detail::List_node_base::insert_after(List_node_base* p) 
 {
 	if (p) {
 		p->_next = _next;
@@ -125,9 +184,48 @@ detail::List_node<T>*
 	return this;
 }
 
-template<class T>
-detail::List_node<T>* 
-	detail::List_node<T>::cut_out() 
+detail::List_node_base* detail::List_node_base::splice_in(List_node_base* first,
+						      	  List_node_base* last)
+{
+	if (!first || !last) return this;//maybe throw instead?
+	if (last->_next) {
+		last->_next->_prev = first->_prev ? first->_prev : nullptr;
+	}
+	if (first->_prev) {
+		first->_prev->_next = last->_next ? last->_next : nullptr;
+	}
+	if (_prev) {
+		_prev->_next = first;
+	}
+	first->_prev = _prev;
+	last->_next = this;
+	_prev = last;
+	return this;	
+}
+
+detail::List_node_base*
+	detail::List_node_base::splice_in_after(List_node_base* first,
+						List_node_base* last)
+{
+	if (!first || !last) throw ltc::out_of_range
+			{"splice_in_after(List_node_base*,List_node_base*)"
+			 " called on an invalid range."};
+	if (last->_next) {
+		last->_next->_prev = first->_prev ? first->_prev : nullptr;
+	}
+	if (first->_prev) {
+		first->_prev->_next = last->_next ? last->_next : nullptr;
+	}
+	if (_next) {
+		_next->_prev = last;
+	}
+	first->_prev = this;
+	last->_next = _next;
+	_next = first;
+	return this;	
+}
+
+detail::List_node_base* detail::List_node_base::cut_out() 
 {
 	if (_next) _next->_prev = _prev;
 	if (_prev) _prev->_next = _next;
@@ -135,13 +233,24 @@ detail::List_node<T>*
 	return this;
 }
 
+detail::List_node_base* detail::List_node_base::cut_out(List_node_base* last)
+{
+	if (!last) throw ltc::out_of_range{"cut_out(List_node_base*) called on "
+					   "a invalid range."};
+	if (_prev) _prev->_next = last->_next;
+	if (last->_next) last->_next->_prev = _prev;
+	_prev = last->_next = nullptr;
+	return this;
+}
+
+//List_node
+
 //List_iterator
 
 template<class T>
-inline detail::List_iterator<T>& 
-	detail::List_iterator<T>::operator++() 
+inline detail::List_iterator<T>& detail::List_iterator<T>::operator++() 
 {
-	 _curr = _curr->next(); 
+	 _curr = static_cast<detail::List_node<T>*>(_curr->next()); 
 	return *this;
 }
 
@@ -158,7 +267,7 @@ template<class T>
 inline detail::List_iterator<T>& 
 	detail::List_iterator<T>::operator--() 
 {
-	--_curr;
+	_curr = static_cast<detail::List_node<T>*>(_curr->prev());
 	return *this;
 }
 
@@ -167,7 +276,7 @@ detail::List_iterator<T>&
 	detail::List_iterator<T>::operator--(int) 
 {
 	List_iterator<T> tmp {*this};
-	--_curr;
+	--*this;
 	return tmp;
 }
 
@@ -178,8 +287,15 @@ typename detail::List_iterator<T>::value_type&
 	return _curr->elem();
 }
 
+template<class T>
+typename detail::List_iterator<T>::const_reference 
+	detail::List_iterator<T>::operator*() const
+{
+	return _curr->elem();
+}
 
-template<class T, class Alloc = ltc::Allocator<T>>
+
+template<class T, class Alloc>
 class List {
 public:
 	using value_type = T;
@@ -190,11 +306,22 @@ public:
 	using const_reference = const value_type&;	
 
 	using iterator = detail::List_iterator<value_type>;
-	using const_iterator = detail::List_iterator<const value_type>;	
+	using const_iterator = detail::List_const_iterator<value_type>;	
+	using reverse_iterator = detail::List_reverse_iterator<value_type>;
+	using const_reverse_iterator =
+		detail::List_const_reverse_iterator<value_type>;
 
-	List(size_type = 0, const_reference val = value_type{});
+	List(const size_type n = 0, const_reference val = value_type{});
 	List(const List<value_type, Alloc>& l);
 	List(List<value_type, Alloc>&& l);
+	/*
+	template<class Iter>
+	List(const Iter start, const Iter finish) : List() {
+		for (Iter i {start}; i != finish; ++i) {
+			push_back(*i);
+		}
+	}
+	*/
 
 	List<value_type, Alloc>& operator=(const List<value_type, Alloc>& l);
 	List<value_type, Alloc>& operator=(List<value_type, Alloc>&& l);
@@ -204,16 +331,31 @@ public:
 	bool empty() const;
 	size_type size() const;
 	
-	void resize(const size_type i, const_reference t = value_type{});
+	void resize(const size_type sz, const_reference val = value_type{});
 	void swap(List<value_type, Alloc>& l);
 	
 	void clear();
-	iterator insert(const iterator& i, const_reference t);
 	void erase(const iterator& i);
 	void push_back(const value_type& t);
 	void pop_back();
 	void push_front(const value_type& t);
 	void pop_front();
+	
+	iterator insert(const iterator pos, const_reference val);
+	void insert(const iterator pos, const size_type n, const_reference val);
+	template<class Iter>
+	void insert(const iterator pos, const Iter start, const Iter end) {
+		for (Iter i {start}; i != end; ++i) {
+			insert(pos, *i);
+		}
+	}
+	
+	void merge(List<T,Alloc>& other);
+
+	void splice(iterator pos, List<T,Alloc>& l);
+	void splice(iterator pos, List<T,Alloc>& l, iterator i);
+	void splice(iterator pos, List<T,Alloc>& l,
+		    iterator first, iterator last);
 
 	reference front();
 	const_reference front() const;
@@ -222,23 +364,29 @@ public:
 	
 	iterator begin();
 	iterator end();
+	const_iterator cbegin() const;
+	const_iterator cend() const;
+	reverse_iterator rbegin();
+	reverse_iterator rend();
+	const_reverse_iterator crbegin() const;
+	const_reverse_iterator crend() const;
 	
 private:
+	using Base_node = detail::List_node_base;
 	using Node = detail::List_node<value_type>;
 	using Node_pointer = Node*;
-
-	using Value_allocator = Alloc;
+	
 	using Node_allocator = typename Alloc::template rebind<Node>::other;
 
-	//allcoates node, and T*
 	Node_pointer allocate_node(const_reference t);
-	//deallocates node, and T* if needed
 	void deallocate_node(Node_pointer p);
 	
+	void initialize_senteniel();	
+	void clear_senteniel();
+
 	size_type _size {0};
-	Node_pointer _head {nullptr};
-	Node_pointer _tail {nullptr};
-	Alloc _val_alloc {};
+	Base_node _sent {}; //_prev = last node
+			    //_next = first node
 	Node_allocator _node_alloc {}; 
 };// class List
 
@@ -249,6 +397,7 @@ private:
 template<class T, class A>
 ltc::List<T,A>::List(size_type n, const_reference val)
 {
+	initialize_senteniel();
 	for (size_type i {0}; i < n; ++i) {
 		push_back(val);
 	}
@@ -257,6 +406,7 @@ ltc::List<T,A>::List(size_type n, const_reference val)
 template<class T, class A>
 ltc::List<T,A>::List(const List<value_type, A>& l)
 {
+	initialize_senteniel();
 	clear();
 	for (const_reference x : l) {
 		push_back(x);
@@ -266,34 +416,41 @@ ltc::List<T,A>::List(const List<value_type, A>& l)
 template<class T, class A>
 ltc::List<T,A>::List(List<value_type, A>&& l) {
 	_size = l._size;
-	_head = l._head;
-	_tail = l._tail;
-	_val_alloc = l._val_alloc;
+	_sent = l._sent;
 	_node_alloc = l._node_alloc;	
-	
+
+	l.clear_senteniel();
 	l._size = 0;
-	l._head = l._tail = nullptr;
 }
+
+/*//
+template<class T, class A, class Iter>
+ltc::List<T,A>::List(const Iter start, const Iter finish) : List()
+{
+	for (Iter i {start}; i != finish; ++i) {
+		push_back(*i);
+	}	
+}
+*/
 	
 template<class T, class A>
 ltc::List<T,A>& ltc::List<T,A>::operator=(const List<T,A>& l) {
 	clear();
-	for (const_reference x : l) {
-		push_back(x);
+	for (const_iterator it{l.cbegin()}; it != l.cend(); ++it) {
+		push_back(*it);
 	}
 }
 
 template<class T, class A>
 ltc::List<T,A>& ltc::List<T,A>::operator=(List<T,A>&& l)
 {
+	clear();
 	_size = l._size;
-	_head = l._head;
-	_tail = l._tail;
-	_val_alloc = l._val_alloc;
+	_sent = l._sent;
 	_node_alloc = l._node_alloc;	
 	
 	l._size = 0;
-	l._head = l._tail = 0;
+	l._sent.clear_senteniel();
 }
 
 template<class T, class A>
@@ -303,52 +460,46 @@ ltc::List<T,A>::~List()
 }
 
 template<class T, class A>
-bool ltc::List<T,A>::empty() const 
+inline bool ltc::List<T,A>::empty() const 
 { 
-	return _size == 0; 
+	return _sent.prev() == _sent.next(); 
 }
 
 template<class T, class A>
-typename ltc::List<T,A>::size_type ltc::List<T,A>::size() const
+inline typename ltc::List<T,A>::size_type ltc::List<T,A>::size() const
 {
 	return _size;
 }
 	
 template<class T, class A>
-void ltc::List<T,A>::resize(const size_type sz, const_reference t)
+void ltc::List<T,A>::resize(const size_type sz, const_reference val)
 {
-	if (_size < sz) {
-		for (size_type i {0}; i < sz - _size; ++i) {
-			push_back(t);
+	size_type old_sz{_size};
+	if (old_sz < sz) {
+		for (size_type i {0}; i < sz - old_sz; ++i) {
+			push_back(val);
 		}
 	}
 	else {
-		for (size_type i {0}; i < _size - sz; ++i) {
+		for (size_type i {0}; i < old_sz - sz; ++i) {
 			pop_back();
 		} 
 	}
-	_size = sz;
 }
 
 template<class T, class A>
 void ltc::List<T,A>::swap(List<T,A>& l)
 {
 	size_type size_tmp {_size};
-	Node_pointer head_tmp {_head};
-	Node_pointer tail_tmp {_tail};
-	Value_allocator v_alloc_tmp {_val_alloc};
+	Base_node sent_tmp {_sent};
 	Node_allocator n_alloc_tmp {_node_alloc};
 
 	_size = l._size;
-	_head = l._head;
-	_tail = l._tail;
-	_val_alloc = l._val_alloc;
-	_node_alloc = l._val_alloc;
+	_sent = l._sent;
+	_node_alloc = l._node_alloc;
 
 	l._size = size_tmp;
-	l._head = head_tmp;
-	l._tail = tail_tmp;
-	l._val_alloc = v_alloc_tmp;
+	l._sent = sent_tmp;
 	l._node_alloc = n_alloc_tmp;
 }
 	
@@ -356,99 +507,136 @@ template<class T, class A>
 void ltc::List<T,A>::clear() 
 {
 	if (empty()) return;
-	iterator i {begin()};
-	iterator j {++begin()};
-	while (i != end()) {
-		deallocate_node(i.node());
-		i = j;
-		if (j) ++j;
+	iterator current {begin()};
+	iterator next {++begin()};
+	while (current != end()) {
+		deallocate_node(current.node());
+		current = next;
+		if (next.node()) ++next;
 	}
-	_head = _tail = nullptr;
 	_size = 0;
 }
 
 template<class T, class A>
-typename ltc::List<T,A>::iterator
-	ltc::List<T,A>::insert(const iterator& i, const_reference t)
+void ltc::List<T,A>::erase(const iterator& pos)
 {
-	Node_pointer new_node {allocate_node(t)};
-	if (i.node()) i.node()->insert(new_node);	
-	else _head = _tail = new_node;
-	++_size;
-	return iterator{new_node};
-}
-
-template<class T, class A>
-void ltc::List<T,A>::erase(const iterator& i)
-{
-	if (!i.node()) return;
-	Node_pointer to_delete {i.node()->cut_out()};
-	deallocate_node(to_delete);	
+	if (pos) return;//TODO
+	deallocate_node(pos.node()->cut_out());	
 	--_size;
 }
 
 template<class T, class A>
 void ltc::List<T,A>::push_back(const value_type& t)
 {
-	Node_pointer new_ptr {allocate_node(t)};
-	if (!empty()) {
-		_tail->insert_after(new_ptr);
-		_tail = new_ptr;
-	}
-	else {
-		_head = _tail = new_ptr;
-	}
+	_sent.prev()->insert_after(allocate_node(t));
 	++_size;
 }
 
 template<class T, class A>
 void ltc::List<T,A>::pop_back()
 {
-	if (empty()) {
-		throw ltc::out_of_range{"pop_back() called on empty list."};
-	}
-	Node_pointer to_delete {_tail};
-	_tail = _tail->prev();
-	to_delete->cut_out();
-	deallocate_node(to_delete);
+	if (empty()) throw ltc::out_of_range{"pop_back() called on an empty "
+						"list"};
+	deallocate_node(_sent.next()->cut_out());
 	--_size;
 }
 		
 template<class T, class A>
 void ltc::List<T,A>::push_front(const value_type& t)
 {
-	Node_pointer new_ptr {allocate_node(t)};
-	if (!empty()) {
-		_head->insert(new_ptr);
-		_head = new_ptr;
-	}
-	else {
-		_head = _tail = new_ptr;
-	}
-	++_size;
+	_sent.next()->insert(allocate_node(t));
+	++_size;	
 }
 	
 template<class T, class A>
+void ltc::List<T,A>::merge(List<T,A>& other)
+{
+	if (other.empty()) return;
+	_sent.prev()->splice_in_after
+			(other._sent.prev().node()->cut_out(other._sent.next()),
+			 other._sent.next());
+	other._size = 0;
+}
+
+template<class T, class A>
+void ltc::List<T,A>::splice(iterator pos, List<T,A>& l)
+{
+	if (!pos) throw ltc::out_of_range
+				{"splice(iterator,list)"
+				 " called on an invalid iterator"};
+	pos.node()->
+		splice_in(l._sent.prev().node()->cut_out(l._sent.next().node()),
+			  l._sent.next().node());
+	_size+=l._size;
+}
+
+template<class T, class A>
+void ltc::List<T,A>::splice(iterator pos, List<T,A>& l, iterator l_pos)
+{
+	if (!pos || !l_pos) throw ltc::out_of_range
+				{"splice(iterator,list,iterator,iterator)"
+				 " called on an invalid iterator"};
+	pos.node()->insert(l_pos.node()->cut_out());
+}
+
+template<class T, class A>
+void ltc::List<T,A>::splice(iterator pos, List<T,A>& l,
+			    iterator first, iterator last)
+{
+	if (!pos || !first || !last) throw ltc::out_of_range
+				{"splice(iterator,list,iterator,iterator)"
+				 " called on an invalid iterator"};
+	pos.node()->splice_in(first.node()->cut_out(last.node()->prev()),
+			     last.node()->prev());
+	//TODO: determine and increase size
+}
+
+template<class T, class A>
 void ltc::List<T,A>::pop_front() 
 {
-	if (empty()) {
-		throw ltc::out_of_range
-			{"pop_front() called on an empty list."};	
-	}
-	Node_pointer to_delete {_head};
-	_head = _head->next();
-	to_delete->cut_out();
+	if (empty()) throw ltc::out_of_range
+				{"pop_front called on an empty list"};
+	Node_pointer to_delete {_sent.next()->cut_out()};
 	deallocate_node(to_delete);
 	--_size;
 }
 
+template<class T, class A>
+void ltc::List<T,A>::insert(const iterator pos,
+			    const size_type n,
+			    const_reference val)
+{
+	for (size_type i{n}; i < n; ++i) {
+		insert(pos,val);
+	}
+}
+
+template<class T, class A>
+typename ltc::List<T,A>::iterator 
+	ltc::List<T,A>::insert(const iterator pos, const_reference val)
+{
+	if (!pos.node()) throw ltc::out_of_range
+				{"insert called on an invalid iterator"};
+	pos.node()->insert(allocate_node(val));
+	++_size;
+}
+
+/*
+template<class T, class A, class Iter>
+void List<T,A>::insert(const iterator pos, const Iter start, const Iter finish)
+{
+	for (Iter i {start}; i != finish; ++i) {
+		insert(pos, *i);
+	}
+}
+*/
 
 template<class T, class A>
 typename ltc::List<T,A>::reference ltc::List<T,A>::front()
 {
 	if (empty()) throw ltc::out_of_range
 				{"front() called on an empty list."};
-	return _head->elem();
+	return begin().elem();
 }
 
 template<class T, class A>
@@ -456,7 +644,7 @@ typename ltc::List<T,A>::const_reference ltc::List<T,A>::front() const
 {
 	if (empty()) throw ltc::out_of_range
 				{"front() called on an empty list."};
-	return _head->elem();
+	return cbegin().elem();
 }
 
 template<class T, class A>
@@ -464,7 +652,7 @@ typename ltc::List<T,A>::reference ltc::List<T,A>::back()
 {
 	if (empty()) throw ltc::out_of_range
 				{"back() called on an empty list."};
-	return _tail->elem();
+	return iterator(_sent.prev()).elem();
 }
 
 template<class T, class A>
@@ -472,19 +660,59 @@ typename ltc::List<T,A>::const_reference ltc::List<T,A>::back() const
 {
 	if (empty()) throw ltc::out_of_range
 				{"back() called on an empty list."};
-	return _tail->elem();
+	return iterator{_sent.prev()}.elem();
 }
 
 template<class T, class A>
 inline typename ltc::List<T,A>::iterator ltc::List<T,A>::begin()
 {
-	return iterator{_head};
+	return iterator{_sent.next()};
 }
 
 template<class T, class A>
 inline typename ltc::List<T,A>::iterator ltc::List<T,A>::end()
 {
-	return iterator{nullptr};
+	return iterator{&_sent};
+}
+
+template<class T, class A>
+inline typename ltc::List<T,A>::const_iterator ltc::List<T,A>::cbegin() const
+{
+	return const_iterator{_sent.next()};
+}
+
+template<class T, class A>
+inline typename ltc::List<T,A>::const_iterator ltc::List<T,A>::cend() const
+{
+	return const_iterator{&_sent};
+}
+
+template<class T, class A>
+inline typename ltc::List<T,A>::reverse_iterator
+	ltc::List<T,A>::rbegin()
+{
+	return reverse_iterator{_sent.prev()};
+}
+
+template<class T, class A>
+inline typename ltc::List<T,A>::reverse_iterator
+	ltc::List<T,A>::rend()
+{
+	return reverse_iterator{&_sent};
+}
+
+template<class T, class A>
+inline typename ltc::List<T,A>::const_reverse_iterator
+	ltc::List<T,A>::crbegin() const
+{
+	return const_reverse_iterator{_sent.prev()};
+}
+
+template<class T, class A>
+inline typename ltc::List<T,A>::const_reverse_iterator
+	ltc::List<T,A>::crend() const
+{
+	return const_reverse_iterator{&_sent};
 }
 
 //allcoates node, and T*
@@ -503,6 +731,19 @@ void ltc::List<T,A>::deallocate_node(Node_pointer p)
 {
 	_node_alloc.destroy(p);
 	_node_alloc.deallocate(p, sizeof(Node));	
+}
+
+template<class T, class A>
+void ltc::List<T,A>::initialize_senteniel()
+{
+	_sent.insert(&_sent); 
+}
+
+template<class T, class A>
+void ltc::List<T,A>::clear_senteniel()
+{
+	_sent = Base_node{};
+	initialize_senteniel();
 }
 
 #endif

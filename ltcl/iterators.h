@@ -1,64 +1,37 @@
 #ifndef GUARD_LTCL_ITERATORS_H
 #define GUARD_LTCL_ITERATORS_H
-
 /*
- * Handling operator== is too hard, making this hierarchy a more cumbersome
- * solution than just using templates, and having iterators provide needed
- * functions.
+ * Bidirectional Iterator assumes: op++, op--, ==
  */
 
 namespace ltc {
 
-template<class T>
-class Iterator {
+template<class BiIter>
+class Bi_reverse_iterator {
 public:
-	using value_type = T;
-	using pointer = value_type*;
-	using const_pointer = const value_type*;
-	using reference = value_type&;
-	using const_reference = const value_type&;
-	using size_type = unsigned long long;
+	Bi_reverse_iterator() = default;
+	Bi_reverse_iterator(BiIter bi) : _iter{bi} {}	
 	
-	virtual reference operator*() = 0;
-	virtual const_reference operator*() const = 0;
+	bool operator==(const Bi_reverse_iterator<BiIter>& it)
+		{ return _iter == it._iter; }
+	bool operator!=(const Bi_reverse_iterator<BiIter>& it)
+		{ return *this != it; }
 	
-	virtual Iterator<T>& operator++() = 0;
-	virtual Iterator<T>& operator++(int) = 0;
+	Bi_reverse_iterator<BiIter> operator++()
+		{ --_iter; return *this; }
+	Bi_reverse_iterator<BiIter> operator++(int)
+		{ Bi_reverse_iterator<BiIter> ret{*this}; ++*this; return ret; }
+	Bi_reverse_iterator<BiIter> operator--()
+		{ ++_iter; return *this; }
+	Bi_reverse_iterator<BiIter> operator--(int)
+		{ Bi_reverse_iterator<BiIter> ret{*this}; --*this; return ret; }
 	
-	bool operator==(const Iterator<T>& it) const { return equal(it); }
-	bool operator!=(const Iterator<T>& it) const { return !equal(it); }
-	
-	virtual ~Iterator() = 0;
-protected:
-	virtual bool equal(const Iterator<T>&) const = 0;
-};// class Iterator
-
-template<class T>
-class Bidirectional_iterator : public Iterator<T> {
-	using typename Iterator<T>::value_type;
-	using typename Iterator<T>::pointer;
-	using typename Iterator<T>::const_pointer;
-	using typename Iterator<T>::reference;
-	using typename Iterator<T>::const_reference;
-	using typename Iterator<T>::size_type;
-
-	virtual Bidirectional_iterator<T>& operator--() = 0; 
-	virtual Bidirectional_iterator<T>& operator--(int) = 0;
-};// class Bidirectional_iterator
-
-
-template<class T>
-class Reverse_iterator : public Iterator<T> {
-public:
-	using typename Iterator<T>::value_type;
-	using typename Iterator<T>::pointer;
-	using typename Iterator<T>::const_pointer;
-	using typename Iterator<T>::reference;
-	using typename Iterator<T>::const_reference;
-	using typename Iterator<T>::size_type;
-
-	Reverse_iterator<T>& operator++() override = 0; 
-	Reverse_iterator<T>& operator++(int) override = 0;
+	typename BiIter::value_type& operator*()
+		{ return *_iter; }
+	const typename BiIter::value_type& operator*() const
+		{ return *_iter; }
+private:
+	BiIter _iter;
 };// class Reverse_iterator
 
 }// namespace ltc
