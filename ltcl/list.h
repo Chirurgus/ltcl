@@ -122,38 +122,6 @@ public:
 	}
 };//class List_reverse_iterator
 
-template<class T>
-class List_const_iterator : public List_iterator<T> {
-public: 
-	using value_type = T;
-
-	using List_iterator<value_type>::List_iterator;
-
-	using reference = typename List_iterator<value_type>::reference;
-	using const_reference = 
-		typename List_iterator<value_type>::const_reference;
-
-	const_reference operator*() const {
-		 return List_iterator<value_type>::operator*();
-	}
-};//class List_const_iterator
-
-template<class T>
-class List_const_reverse_iterator : public List_reverse_iterator<T> {
-public: 
-	using value_type = T;
-
-	using List_reverse_iterator<value_type>::List_reverse_iterator;
-
-	using reference = typename List_reverse_iterator<value_type>::reference;
-	using const_reference =
-		 typename List_reverse_iterator<value_type>::const_reference;
-
-	const_reference operator*() const {
-		 return List_reverse_iterator<value_type>::operator*();
-	}
-};//class List_const_reverse_iterator
-
 }// namespace detail
 
 //List_node members
@@ -306,10 +274,10 @@ public:
 	using const_reference = const value_type&;	
 
 	using iterator = detail::List_iterator<value_type>;
-	using const_iterator = detail::List_const_iterator<value_type>;	
+	using const_iterator = detail::List_iterator<const value_type>;	
 	using reverse_iterator = detail::List_reverse_iterator<value_type>;
-	using const_reverse_iterator =
-		detail::List_const_reverse_iterator<value_type>;
+	using const_reverse_iterator = 
+		detail::List_reverse_iterator<const value_type>;
 
 	List(const size_type n = 0, const_reference val = value_type{});
 	List(const List<value_type, Alloc>& l);
@@ -385,8 +353,8 @@ private:
 	void clear_senteniel();
 
 	size_type _size {0};
-	Base_node _sent {}; //_prev = last node
-			    //_next = first node
+	Base_node _sent {}; //prev() = last node
+			    //next() = first node
 	Node_allocator _node_alloc {}; 
 };// class List
 
@@ -408,18 +376,20 @@ ltc::List<T,A>::List(const List<value_type, A>& l)
 {
 	initialize_senteniel();
 	clear();
-	for (const_reference x : l) {
-		push_back(x);
+	for (const_iterator it {l.cbegin()}; it != l.cend(); ++it) {
+		push_back(*it);
 	}
 }
 
 template<class T, class A>
-ltc::List<T,A>::List(List<value_type, A>&& l) {
-	_size = l._size;
-	_sent = l._sent;
-	_node_alloc = l._node_alloc;	
-
-	l.clear_senteniel();
+ltc::List<T,A>::List(List<value_type, A>&& l)
+	: _size{l._size}
+	, _sent{}
+	, _node_alloc{l._node_alloc}
+{
+	initialize_senteniel();
+	_sent.splice_in_after(l._sent.next()->cut_out(l._sent.prev()),
+			      l._sent.prev());
 	l._size = 0;
 }
 
@@ -446,11 +416,11 @@ ltc::List<T,A>& ltc::List<T,A>::operator=(List<T,A>&& l)
 {
 	clear();
 	_size = l._size;
-	_sent = l._sent;
+	_sent.splice_in_after(l._sent.next()->cut_out(l._sent.prev()),
+			      l._sent.prev());
 	_node_alloc = l._node_alloc;	
-	
+		
 	l._size = 0;
-	l._sent.clear_senteniel();
 }
 
 template<class T, class A>
@@ -462,7 +432,7 @@ ltc::List<T,A>::~List()
 template<class T, class A>
 inline bool ltc::List<T,A>::empty() const 
 { 
-	return _sent.prev() == _sent.next(); 
+	return _sent.prev() == &_sent; 
 }
 
 template<class T, class A>
@@ -490,38 +460,35 @@ void ltc::List<T,A>::resize(const size_type sz, const_reference val)
 template<class T, class A>
 void ltc::List<T,A>::swap(List<T,A>& l)
 {
-	size_type size_tmp {_size};
-	Base_node sent_tmp {_sent};
 	Node_allocator n_alloc_tmp {_node_alloc};
-
-	_size = l._size;
-	_sent = l._sent;
+	
+	iterator last {_sent.prev()};
+	splice(end(), l);
+	++last;
+	l.splice(l.begin(), l, begin(), last);
+	
 	_node_alloc = l._node_alloc;
 
-	l._size = size_tmp;
-	l._sent = sent_tmp;
 	l._node_alloc = n_alloc_tmp;
 }
 	
 template<class T, class A>
 void ltc::List<T,A>::clear() 
 {
-	if (empty()) return;
-	iterator current {begin()};
-	iterator next {++begin()};
-	while (current != end()) {
-		deallocate_node(current.node());
-		current = next;
-		if (next.node()) ++next;
+	for (Base_node *curr {_sent.next()},
+		       *next {curr->next()};
+		curr != &_sent;
+		curr = next, next = next->next()) {
+		deallocate_node(static_cast<Node_pointer>(curr));
 	}
-	_size = 0;
+	clear_senteniel();
 }
 
 template<class T, class A>
 void ltc::List<T,A>::erase(const iterator& pos)
 {
 	if (pos) return;//TODO
-	deallocate_node(pos.node()->cut_out());	
+	deallocate_node(static_cast<Node_pointer>(pos.node()->cut_out()));	
 	--_size;
 }
 
@@ -537,7 +504,7 @@ void ltc::List<T,A>::pop_back()
 {
 	if (empty()) throw ltc::out_of_range{"pop_back() called on an empty "
 						"list"};
-	deallocate_node(_sent.next()->cut_out());
+	deallocate_node(static_cast<Node_pointer>(_sent.prev()->cut_out()));
 	--_size;
 }
 		
@@ -553,8 +520,9 @@ void ltc::List<T,A>::merge(List<T,A>& other)
 {
 	if (other.empty()) return;
 	_sent.prev()->splice_in_after
-			(other._sent.prev().node()->cut_out(other._sent.next()),
-			 other._sent.next());
+			(other._sent.next().node()->cut_out(other._sent.prev()),
+			 other._sent.prev());
+	_size += other.size();
 	other._size = 0;
 }
 
@@ -565,9 +533,10 @@ void ltc::List<T,A>::splice(iterator pos, List<T,A>& l)
 				{"splice(iterator,list)"
 				 " called on an invalid iterator"};
 	pos.node()->
-		splice_in(l._sent.prev().node()->cut_out(l._sent.next().node()),
-			  l._sent.next().node());
-	_size+=l._size;
+		splice_in(l._sent.next()->cut_out(l._sent.prev()),
+			  l._sent.prev());
+	_size += l._size;
+	l._size = 0;
 }
 
 template<class T, class A>
@@ -596,7 +565,8 @@ void ltc::List<T,A>::pop_front()
 {
 	if (empty()) throw ltc::out_of_range
 				{"pop_front called on an empty list"};
-	Node_pointer to_delete {_sent.next()->cut_out()};
+	Node_pointer to_delete 
+		{static_cast<Node_pointer>(_sent.next()->cut_out())};
 	deallocate_node(to_delete);
 	--_size;
 }
@@ -636,7 +606,7 @@ typename ltc::List<T,A>::reference ltc::List<T,A>::front()
 {
 	if (empty()) throw ltc::out_of_range
 				{"front() called on an empty list."};
-	return begin().elem();
+	return *begin();
 }
 
 template<class T, class A>
@@ -644,7 +614,7 @@ typename ltc::List<T,A>::const_reference ltc::List<T,A>::front() const
 {
 	if (empty()) throw ltc::out_of_range
 				{"front() called on an empty list."};
-	return cbegin().elem();
+	return *cbegin();
 }
 
 template<class T, class A>
@@ -652,7 +622,7 @@ typename ltc::List<T,A>::reference ltc::List<T,A>::back()
 {
 	if (empty()) throw ltc::out_of_range
 				{"back() called on an empty list."};
-	return iterator(_sent.prev()).elem();
+	return *iterator{_sent.prev()};
 }
 
 template<class T, class A>
@@ -660,7 +630,7 @@ typename ltc::List<T,A>::const_reference ltc::List<T,A>::back() const
 {
 	if (empty()) throw ltc::out_of_range
 				{"back() called on an empty list."};
-	return iterator{_sent.prev()}.elem();
+	return *iterator{_sent.prev()};
 }
 
 template<class T, class A>
@@ -684,7 +654,7 @@ inline typename ltc::List<T,A>::const_iterator ltc::List<T,A>::cbegin() const
 template<class T, class A>
 inline typename ltc::List<T,A>::const_iterator ltc::List<T,A>::cend() const
 {
-	return const_iterator{&_sent};
+	return const_iterator{_sent.next()->prev()};
 }
 
 template<class T, class A>
@@ -712,7 +682,7 @@ template<class T, class A>
 inline typename ltc::List<T,A>::const_reverse_iterator
 	ltc::List<T,A>::crend() const
 {
-	return const_reverse_iterator{&_sent};
+	return const_reverse_iterator{_sent.next()->prev()};
 }
 
 //allcoates node, and T*
