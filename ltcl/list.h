@@ -25,6 +25,8 @@ public:
 	
 	List_node_base* next() const { return _next; }
 	List_node_base* prev() const { return _prev; }
+	
+	virtual ~List_node_base() {}
 private:
 	List_node_base* _next{nullptr};
 	List_node_base* _prev{nullptr};
@@ -85,7 +87,7 @@ public:
 
 private:
 	List_node<value_type>* node() { return _curr; }
-
+	
 	List_node<value_type>* _curr {nullptr};
 };// class List_iteator
 
@@ -347,12 +349,11 @@ private:
 	using Node_allocator = typename Alloc::template rebind<Node>::other;
 
 	Node_pointer allocate_node(const_reference t);
-	void deallocate_node(Node_pointer p);
+	void deallocate_node(Base_node* bp);
 	
 	void initialize_senteniel();	
 	void clear_senteniel();
 
-	size_type _size {0};
 	Base_node _sent {}; //prev() = last node
 			    //next() = first node
 	Node_allocator _node_alloc {}; 
@@ -383,14 +384,12 @@ ltc::List<T,A>::List(const List<value_type, A>& l)
 
 template<class T, class A>
 ltc::List<T,A>::List(List<value_type, A>&& l)
-	: _size{l._size}
-	, _sent{}
+	: _sent{}
 	, _node_alloc{l._node_alloc}
 {
 	initialize_senteniel();
 	_sent.splice_in_after(l._sent.next()->cut_out(l._sent.prev()),
 			      l._sent.prev());
-	l._size = 0;
 }
 
 /*//
@@ -415,12 +414,9 @@ template<class T, class A>
 ltc::List<T,A>& ltc::List<T,A>::operator=(List<T,A>&& l)
 {
 	clear();
-	_size = l._size;
 	_sent.splice_in_after(l._sent.next()->cut_out(l._sent.prev()),
 			      l._sent.prev());
 	_node_alloc = l._node_alloc;	
-		
-	l._size = 0;
 }
 
 template<class T, class A>
@@ -438,13 +434,13 @@ inline bool ltc::List<T,A>::empty() const
 template<class T, class A>
 inline typename ltc::List<T,A>::size_type ltc::List<T,A>::size() const
 {
-	return _size;
+	return ltc::distance(cbegin(), cend());
 }
 	
 template<class T, class A>
 void ltc::List<T,A>::resize(const size_type sz, const_reference val)
 {
-	size_type old_sz{_size};
+	size_type old_sz{size()};
 	if (old_sz < sz) {
 		for (size_type i {0}; i < sz - old_sz; ++i) {
 			push_back(val);
@@ -460,16 +456,10 @@ void ltc::List<T,A>::resize(const size_type sz, const_reference val)
 template<class T, class A>
 void ltc::List<T,A>::swap(List<T,A>& l)
 {
-	Node_allocator n_alloc_tmp {_node_alloc};
-	
-	iterator last {_sent.prev()};
+	Base_node* last {_sent.prev()};
 	splice(end(), l);
-	++last;
-	l.splice(l.begin(), l, begin(), last);
-	
-	_node_alloc = l._node_alloc;
-
-	l._node_alloc = n_alloc_tmp;
+	l.splice(l.begin(), *this, iterator{_sent.next()}
+				 , ltc::next(iterator{last}));	
 }
 	
 template<class T, class A>
@@ -479,7 +469,7 @@ void ltc::List<T,A>::clear()
 		       *next {curr->next()};
 		curr != &_sent;
 		curr = next, next = next->next()) {
-		deallocate_node(static_cast<Node_pointer>(curr));
+		deallocate_node(curr);
 	}
 	clear_senteniel();
 }
@@ -487,16 +477,15 @@ void ltc::List<T,A>::clear()
 template<class T, class A>
 void ltc::List<T,A>::erase(const iterator& pos)
 {
-	if (pos) return;//TODO
-	deallocate_node(static_cast<Node_pointer>(pos.node()->cut_out()));	
-	--_size;
+	if (empty() || !pos) throw ltc::out_of_range
+			{"erase(iterator) called on an invalid iterator."};
+	deallocate_node(pos.node()->cut_out());	
 }
 
 template<class T, class A>
 void ltc::List<T,A>::push_back(const value_type& t)
 {
 	_sent.prev()->insert_after(allocate_node(t));
-	++_size;
 }
 
 template<class T, class A>
@@ -504,15 +493,13 @@ void ltc::List<T,A>::pop_back()
 {
 	if (empty()) throw ltc::out_of_range{"pop_back() called on an empty "
 						"list"};
-	deallocate_node(static_cast<Node_pointer>(_sent.prev()->cut_out()));
-	--_size;
+	deallocate_node(_sent.prev()->cut_out());
 }
 		
 template<class T, class A>
 void ltc::List<T,A>::push_front(const value_type& t)
 {
 	_sent.next()->insert(allocate_node(t));
-	++_size;	
 }
 	
 template<class T, class A>
@@ -522,8 +509,6 @@ void ltc::List<T,A>::merge(List<T,A>& other)
 	_sent.prev()->splice_in_after
 			(other._sent.next().node()->cut_out(other._sent.prev()),
 			 other._sent.prev());
-	_size += other.size();
-	other._size = 0;
 }
 
 template<class T, class A>
@@ -535,8 +520,6 @@ void ltc::List<T,A>::splice(iterator pos, List<T,A>& l)
 	pos.node()->
 		splice_in(l._sent.next()->cut_out(l._sent.prev()),
 			  l._sent.prev());
-	_size += l._size;
-	l._size = 0;
 }
 
 template<class T, class A>
@@ -557,7 +540,6 @@ void ltc::List<T,A>::splice(iterator pos, List<T,A>& l,
 				 " called on an invalid iterator"};
 	pos.node()->splice_in(first.node()->cut_out(last.node()->prev()),
 			     last.node()->prev());
-	//TODO: determine and increase size
 }
 
 template<class T, class A>
@@ -566,9 +548,8 @@ void ltc::List<T,A>::pop_front()
 	if (empty()) throw ltc::out_of_range
 				{"pop_front called on an empty list"};
 	Node_pointer to_delete 
-		{static_cast<Node_pointer>(_sent.next()->cut_out())};
+		{_sent.next()->cut_out()};
 	deallocate_node(to_delete);
-	--_size;
 }
 
 template<class T, class A>
@@ -588,7 +569,6 @@ typename ltc::List<T,A>::iterator
 	if (!pos.node()) throw ltc::out_of_range
 				{"insert called on an invalid iterator"};
 	pos.node()->insert(allocate_node(val));
-	++_size;
 }
 
 /*
@@ -695,10 +675,14 @@ typename ltc::List<T,A>::Node_pointer
 	return new_node;
 }
 
-//deallocates node, and T* if needed
+/*
+ * Base_node does not have a virtual destructor, but this is safe since classes
+ * derived from Base_node won't have non-emtpy destructors.
+ */
 template<class T, class A>
-void ltc::List<T,A>::deallocate_node(Node_pointer p)
+void ltc::List<T,A>::deallocate_node(Base_node* bp)
 {
+	Node_pointer p {static_cast<Node_pointer>(bp)};
 	_node_alloc.destroy(p);
 	_node_alloc.deallocate(p, sizeof(Node));	
 }

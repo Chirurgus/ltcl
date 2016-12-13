@@ -1,11 +1,12 @@
 #ifndef GUARD_LTCL_ITERATORS_H
 #define GUARD_LTCL_ITERATORS_H
-/*
- * Bidirectional Iterator assumes: op++, op--, ==
- */
 
 namespace ltc {
 
+/*
+ * Bidirectional Iterator assumes that these operators are present:
+ *					 		 op++, op--, op==
+ */
 template<class BiIter>
 class Bi_reverse_iterator {
 public:
@@ -34,6 +35,58 @@ private:
 	BiIter _iter;
 };// class Reverse_iterator
 
+//TODO: somehow determine Iter size_type (boy aren't iterator traits cool)
+template<class Iter>
+unsigned long long distance(const Iter& first, const Iter& last);
+
+template<class Iter>
+void advance(Iter& it, long long = 1);
+
+template<class Iter>
+Iter next(Iter it, long long n = 1);
+
+template<class Iter>
+Iter prev(Iter it, long long n = 1);
+
 }// namespace ltc
+
+template<class Iter>
+unsigned long long ltc::distance(const Iter& first, const Iter& last)
+{
+	unsigned long long ret{0};	
+	for (Iter it{first}; it != last; ++it) {
+		++ret;
+	}
+	return ret;
+}
+
+template<class Iter>
+void ltc::advance(Iter& it, long long n)
+{
+	if (n >= 0) {
+		for (long long i{0}; i < n; ++i) {
+			++it;
+		}
+	}
+	else {
+		for (long long i{0}; i < -n; ++i) {
+			--it;
+		}
+	}
+}
+
+template<class Iter>
+Iter ltc::next(Iter it, long long n)
+{
+	advance(it, n);
+	return it;
+}
+
+template<class Iter>
+Iter ltc::prev(Iter it, long long n)
+{
+	advance(it, -n);
+	return it;
+}
 
 #endif
