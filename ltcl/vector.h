@@ -217,14 +217,13 @@ void ltc::Vector<T,A>::resize(const size_type i,
 				alloc.destroy(it);
 			}
 			_last = _first + i;
-			return;
 		}
 		else {
 			for (;_last != _first + i; ++_last) {
 				alloc.construct(_last, v);
 			}
-			return;
 		}
+		return;
 	}
 	grow(i);
 	for (; _last != _end; ++_last) {
@@ -234,6 +233,7 @@ void ltc::Vector<T,A>::resize(const size_type i,
 
 template<class T, class A>
 inline void ltc::Vector<T,A>::reserve(const size_type i) {
+	if (i <= capacity()) return;
 	grow(i);
 }
 

@@ -17,7 +17,7 @@ public:
 	out_of_range(const string& err = "Out of range error.") : _err{err} {}
 	string what() const override { return _err; }
 	
-	~out_of_range() {};
+	~out_of_range() override {};
 private:
 	string _err;
 };// class out_of_range
