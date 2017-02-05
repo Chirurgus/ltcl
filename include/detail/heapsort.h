@@ -60,4 +60,4 @@ void heapsort(Vector<T>& a)
 
 }//namespace ltc
 
-#endif
+#endif// !GUARD_LTC_DETAIL_HEAPSORT_H
