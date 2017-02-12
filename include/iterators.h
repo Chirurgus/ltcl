@@ -3,6 +3,22 @@
 
 namespace ltc {
 
+template<class I>
+struct Iterator_traits {
+	using value_type = I::value_type;
+	using pointer_type = I::pointer_type;
+	using reference_type = I::reference_type;
+	using size_type = I::size_type;
+};//Iterator_traits
+
+template<class T>
+struct Iterator_traits<T*> {
+	using value_type = T;
+	using pointer_type = T*;
+	using reference_type = T&;
+	using size_type = unsinged long long;
+};//Iterator_traits
+
 /*
  * Bidirectional Iterator assumes that these operators are present:
  *					 		 op++, op--, op==
