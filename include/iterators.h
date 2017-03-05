@@ -53,21 +53,23 @@ private:
 
 //TODO: somehow determine Iter size_type (boy aren't iterator traits cool)
 template<class Iter>
-unsigned long long distance(const Iter& first, const Iter& last);
+ltc::iterator_traits<Iter>::size_type
+	distance(const Iter& first, const Iter& last);
 
 template<class Iter>
-void advance(Iter& it, long long = 1);
+void advance(Iter& it, ltc::iterator_traits<Iter>::size_type n = 1);
 
 template<class Iter>
-Iter next(Iter it, long long n = 1);
+Iter next(Iter it, ltc::iterator_traits<Iter>::size_type  n = 1);
 
 template<class Iter>
-Iter prev(Iter it, long long n = 1);
+Iter prev(Iter it, ltc::iterator_traits<Iter>::size_type n = 1);
 
 }// namespace ltc
 
 template<class Iter>
-unsigned long long ltc::distance(const Iter& first, const Iter& last)
+ltc::iterator_traits<Iter>::size_type
+	ltc::distance(const Iter& first, const Iter& last)
 {
 	unsigned long long ret{0};	
 	for (Iter it{first}; it != last; ++it) {
@@ -77,7 +79,7 @@ unsigned long long ltc::distance(const Iter& first, const Iter& last)
 }
 
 template<class Iter>
-void ltc::advance(Iter& it, long long n)
+void advance(Iter& it, ltc::iterator_traits<Iter>::size_type n = 1);
 {
 	if (n >= 0) {
 		for (long long i{0}; i < n; ++i) {
@@ -92,14 +94,14 @@ void ltc::advance(Iter& it, long long n)
 }
 
 template<class Iter>
-Iter ltc::next(Iter it, long long n)
+Iter next(Iter it, ltc::iterator_traits<Iter>::size_type  n = 1);
 {
 	advance(it, n);
 	return it;
 }
 
 template<class Iter>
-Iter ltc::prev(Iter it, long long n)
+Iter prev(Iter it, ltc::iterator_traits<Iter>::size_type n = 1);
 {
 	advance(it, -n);
 	return it;
