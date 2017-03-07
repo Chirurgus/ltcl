@@ -6,7 +6,7 @@
 namespace ltc {
 
 /*
- * A rudementary allocator.
+ * A rudimentary allocator.
  * 
  * I would have liked it to be able to move the new objects into it's
  * newlly allocated place in memory, but not sure how implement it, for now...
@@ -39,23 +39,27 @@ public:
 
 template<class T>
 typename ltc::Allocator<T>::pointer
-	ltc::Allocator<T>::allocate(const size_type sz) {
+	ltc::Allocator<T>::allocate(const size_type sz)
+{
 	return static_cast<pointer>
 		(::operator new(sizeof(value_type) * sz, std::nothrow));
 }
 	
 template<class T>
-void ltc::Allocator<T>::deallocate(const pointer p, const size_type) {
+void ltc::Allocator<T>::deallocate(const pointer p, const size_type)
+{
 	//ignore size_type argument
 	::operator delete(p);
 }
 	
 template<class T>
-void ltc::Allocator<T>::construct(const pointer p, const value_type& v) {
+void ltc::Allocator<T>::construct(const pointer p, const value_type& v)
+{
 	::new((void*)p) value_type{v};
 }
 template<class T>
-void ltc::Allocator<T>::destroy(const pointer p) {
+void ltc::Allocator<T>::destroy(const pointer p)
+{
 	p->~value_type();
 }
 
